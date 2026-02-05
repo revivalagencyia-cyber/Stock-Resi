@@ -94,11 +94,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (error) throw error;
     };
 
-    // 5. BORRAR PRODUCTO (Solo envía a la nube)
+    // 5. BORRAR PRODUCTO (Optimista e instantáneo)
     const deleteProduct = async (id: string) => {
         if (!supabase) return;
+
+        // Lo quitamos de la pantalla inmediatamente
+        setProducts(prev => prev.filter(p => p.id !== id));
+
         const { error } = await supabase.from('products').delete().eq('id', id);
-        if (error) throw error;
+        if (error) {
+            console.error("Error al eliminar de Supabase:", error);
+            // Si hubo error, podríamos recargar para asegurar consistencia
+            const { data } = await supabase.from('products').select('*').order('name');
+            if (data) setProducts(data as Product[]);
+        }
     };
 
     // 6. REGISTRAR MOVIMIENTO (Solo envía a la nube)
