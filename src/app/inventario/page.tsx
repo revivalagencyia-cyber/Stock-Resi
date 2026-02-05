@@ -3,16 +3,18 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Plus, Search, Filter, AlertTriangle } from "lucide-react";
+import { Plus, Search, Filter, AlertTriangle, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { useProducts } from '@/lib/storage';
 import { AddProductForm } from '@/components/AddProductForm';
+import { DeleteProductModal } from '@/components/DeleteProductModal';
 import { cn } from '@/lib/utils';
 import { differenceInDays, parseISO } from 'date-fns';
 
 export default function InventoryPage() {
-    const { products, loading } = useProducts();
+    const { products } = useProducts();
     const [showAddForm, setShowAddForm] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     const filteredProducts = products.filter(p =>
@@ -41,9 +43,21 @@ export default function InventoryPage() {
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">Inventario</h1>
                     <p className="text-muted-foreground mt-1">Gestiona todos los productos y existencias.</p>
                 </div>
-                <Button onClick={() => setShowAddForm(true)} className={cn("gap-2", showAddForm && "hidden")}>
-                    <Plus className="h-4 w-4" /> Nuevo Producto
-                </Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowDeleteModal(true)}
+                        className={cn("gap-2 flex-1 sm:flex-initial text-destructive border-destructive/20 hover:bg-destructive/10", (showAddForm || products.length === 0) && "hidden")}
+                    >
+                        <Trash2 className="h-4 w-4" /> Eliminar
+                    </Button>
+                    <Button
+                        onClick={() => setShowAddForm(true)}
+                        className={cn("gap-2 flex-1 sm:flex-initial", showAddForm && "hidden")}
+                    >
+                        <Plus className="h-4 w-4" /> Nuevo Producto
+                    </Button>
+                </div>
             </div>
 
             {showAddForm && (
@@ -53,6 +67,10 @@ export default function InventoryPage() {
                         onSuccess={() => setShowAddForm(false)}
                     />
                 </div>
+            )}
+
+            {showDeleteModal && (
+                <DeleteProductModal onClose={() => setShowDeleteModal(false)} />
             )}
 
             {!showAddForm && (
