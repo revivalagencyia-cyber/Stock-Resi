@@ -2,9 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ArrowRightLeft, Box, RefreshCw, LogOut, User, X } from 'lucide-react';
+import { LayoutDashboard, Package, ArrowRightLeft, Box, LogOut, User, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useData } from '@/context/DataContext';
 import { useUser } from '@/context/UserContext';
 import { useState } from 'react';
 import { Button } from './ui/Button';
@@ -17,25 +16,9 @@ const navItems = [
 
 export function Navigation() {
     const pathname = usePathname();
-    const { clearAllData } = useData();
     const { user, logout } = useUser();
-    const [isClearing, setIsClearing] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
 
-    const handleClear = async () => {
-        if (confirm('¿Estás seguro de que quieres borrar TODOS los datos? Esta acción no se puede deshacer.')) {
-            setIsClearing(true);
-            try {
-                await clearAllData();
-                alert('Datos borrados correctamente.');
-                setShowUserMenu(false);
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setIsClearing(false);
-            }
-        }
-    };
 
     return (
         <>
@@ -93,14 +76,6 @@ export function Navigation() {
                                         <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest">Usuario</p>
                                         <p className="text-sm font-bold truncate">{user}</p>
                                     </div>
-                                    <button
-                                        onClick={handleClear}
-                                        disabled={isClearing}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                                    >
-                                        <RefreshCw className={cn("h-3.5 w-3.5", isClearing && "animate-spin")} />
-                                        Reiniciar Sistema
-                                    </button>
                                     <button
                                         onClick={logout}
                                         className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent rounded-lg transition-colors mt-1"
@@ -167,15 +142,6 @@ export function Navigation() {
                         </div>
 
                         <div className="space-y-3">
-                            <Button
-                                variant="outline"
-                                className="w-full justify-start gap-3 h-12 text-destructive border-destructive/20 hover:bg-destructive/10"
-                                onClick={handleClear}
-                                disabled={isClearing}
-                            >
-                                <RefreshCw className={cn("h-5 w-5", isClearing && "animate-spin")} />
-                                Reiniciar Sistema Completo
-                            </Button>
                             <Button
                                 variant="secondary"
                                 className="w-full justify-start gap-3 h-12"
