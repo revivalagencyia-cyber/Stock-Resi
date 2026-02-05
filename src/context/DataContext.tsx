@@ -5,22 +5,14 @@ import { Product, Transaction } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import { useUser } from './UserContext';
 
-const STORAGE_KEYS = {
-    PRODUCTS: 'stock-resi-products',
-    TRANSACTIONS: 'stock-resi-transactions',
-};
-
-const TABLE_PRODUCTS = 'products';
-const TABLE_TRANSACTIONS = 'transactions';
-
 interface DataContextType {
     products: Product[];
     transactions: Transaction[];
     loading: boolean;
-    addProduct: (product: Omit<Product, 'id' | 'updatedAt'>) => Promise<Product>;
+    addProduct: (product: Omit<Product, 'id' | 'updatedAt'>) => Promise<void>;
     updateProduct: (id: string, updates: Partial<Omit<Product, 'id' | 'updatedAt'>>) => Promise<void>;
     deleteProduct: (id: string) => Promise<void>;
-    addTransaction: (transaction: Omit<Transaction, 'id' | 'date'>) => Promise<Transaction>;
+    addTransaction: (transaction: Omit<Transaction, 'id' | 'date'>) => Promise<void>;
     clearAllData: () => Promise<void>;
 }
 
@@ -32,164 +24,106 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const { user } = useUser();
 
-    // Load Data
+    // 1. CARGA INICIAL DE DATOS
     useEffect(() => {
-        const loadData = async () => {
-            // 1. Try Supabase
-            if (supabase) {
-                try {
-                    const { data: pData, error: pError } = await supabase.from(TABLE_PRODUCTS).select('*');
-                    const { data: tData, error: tError } = await supabase.from(TABLE_TRANSACTIONS).select('*').order('date', { ascending: false });
-
-                    if (!pError && pData) setProducts(pData);
-                    if (!tError && tData) setTransactions(tData);
-
-                    // Realtime
-                    const channel = supabase
-                        .channel('db-changes')
-                        .on('postgres_changes', { event: '*', schema: 'public', table: TABLE_PRODUCTS }, (payload) => {
-                            if (payload.eventType === 'INSERT') setProducts(prev => [...prev, payload.new as Product]);
-                            if (payload.eventType === 'UPDATE') setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new as Product : p));
-                            if (payload.eventType === 'DELETE') setProducts(prev => prev.filter(p => p.id !== payload.old.id));
-                        })
-                        .on('postgres_changes', { event: '*', schema: 'public', table: TABLE_TRANSACTIONS }, (payload) => {
-                            if (payload.eventType === 'INSERT') setTransactions(prev => [payload.new as Transaction, ...prev]);
-                            if (payload.eventType === 'DELETE') setTransactions([]); // For bulk clear
-                        })
-                        .subscribe();
-
-                    setLoading(false);
-                    return () => {
-                        if (supabase) {
-                            supabase.removeChannel(channel);
-                        }
-                    };
-                } catch (error) {
-                    console.error("Supabase error (falling back to local):", error);
-                }
-            }
-
-            // 2. Fallback to LocalStorage (if Supabase not configured or failed)
+        const loadInitialData = async () => {
             if (!supabase) {
-                try {
-                    const storedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-                    const storedTransactions = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+                setLoading(false);
+                return;
+            }
 
-                    if (storedProducts) setProducts(JSON.parse(storedProducts));
-                    if (storedTransactions) setTransactions(JSON.parse(storedTransactions));
-                } catch (e) {
-                    console.error("Local storage error:", e);
-                } finally {
-                    setLoading(false);
-                }
+            try {
+                const { data: pData } = await supabase.from('products').select('*').order('name');
+                const { data: tData } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+
+                if (pData) setProducts(pData as Product[]);
+                if (tData) setTransactions(tData as Transaction[]);
+            } catch (err) {
+                console.error("Error cargando base de datos:", err);
+            } finally {
+                setLoading(false);
             }
         };
 
-        loadData();
+        loadInitialData();
 
-        // Listen for storage events (only relevant for local storage mode really)
-        const handleStorageChange = (e: StorageEvent) => {
-            if (!supabase && (e.key === STORAGE_KEYS.PRODUCTS || e.key === STORAGE_KEYS.TRANSACTIONS)) {
-                const storedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-                if (storedProducts) setProducts(JSON.parse(storedProducts));
-                const storedTransactions = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-                if (storedTransactions) setTransactions(JSON.parse(storedTransactions));
-            }
-        };
+        // 2. ESCUCHA ÚNICA EN TIEMPO REAL (La única que actualiza la pantalla)
+        if (supabase) {
+            const channel = supabase.channel('global_sync')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+                    console.log('Cambio en Productos:', payload.eventType);
+                    if (payload.eventType === 'INSERT') {
+                        setProducts(prev => {
+                            if (prev.some(p => p.id === payload.new.id)) return prev;
+                            return [...prev, payload.new as Product].sort((a, b) => a.name.localeCompare(b.name));
+                        });
+                    }
+                    if (payload.eventType === 'UPDATE') {
+                        setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new as Product : p));
+                    }
+                    if (payload.eventType === 'DELETE') {
+                        setProducts(prev => prev.filter(p => p.id !== payload.old.id));
+                    }
+                })
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, (payload) => {
+                    console.log('Nuevo Movimiento detectado');
+                    setTransactions(prev => {
+                        if (prev.some(t => t.id === payload.new.id)) return prev;
+                        return [payload.new as Transaction, ...prev];
+                    });
+                })
+                .subscribe();
 
-        window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
+            return () => { supabase.removeChannel(channel); };
+        }
     }, []);
 
-    // Save Helpers
-    const saveProducts = async (newProducts: Product[], operation: 'INSERT' | 'UPDATE' | 'DELETE', item?: Product) => {
-        setProducts(newProducts); // Optimistic update
-
-        if (supabase && item) {
-            if (operation === 'INSERT') await supabase.from(TABLE_PRODUCTS).insert(item);
-            if (operation === 'UPDATE') await supabase.from(TABLE_PRODUCTS).update(item).eq('id', item.id);
-            if (operation === 'DELETE') await supabase.from(TABLE_PRODUCTS).delete().eq('id', item.id);
-        } else {
-            localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(newProducts));
-        }
+    // 3. AÑADIR PRODUCTO (Solo envía a la nube)
+    const addProduct = async (productData: Omit<Product, 'id' | 'updatedAt'>) => {
+        if (!supabase) return;
+        const newProduct = { ...productData, updatedAt: new Date().toISOString() };
+        const { error } = await supabase.from('products').insert([newProduct]);
+        if (error) throw error;
     };
 
-    const saveTransactions = async (newTransactions: Transaction[], newItem?: Transaction) => {
-        setTransactions(newTransactions); // Optimistic update
-
-        if (supabase && newItem) {
-            await supabase.from(TABLE_TRANSACTIONS).insert(newItem);
-        } else {
-            localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(newTransactions));
-        }
+    // 4. ACTUALIZAR PRODUCTO (Solo envía a la nube)
+    const updateProduct = async (id: string, updates: Partial<Product>) => {
+        if (!supabase) return;
+        const fullUpdates = { ...updates, updatedAt: new Date().toISOString() };
+        const { error } = await supabase.from('products').update(fullUpdates).eq('id', id);
+        if (error) throw error;
     };
 
-    // Actions
-    const addProduct = async (product: Omit<Product, 'id' | 'updatedAt'>) => {
-        const newProduct: Product = {
-            ...product,
-            id: crypto.randomUUID(),
-            updatedAt: new Date().toISOString(),
-        };
-        await saveProducts([...products, newProduct], 'INSERT', newProduct);
-        return newProduct;
-    };
-
-    const updateProduct = async (id: string, updates: Partial<Omit<Product, 'id' | 'updatedAt'>>) => {
-        const product = products.find(p => p.id === id);
-        if (!product) return;
-
-        const updatedProduct = { ...product, ...updates, updatedAt: new Date().toISOString() };
-        const newProducts = products.map(p => p.id === id ? updatedProduct : p);
-        await saveProducts(newProducts, 'UPDATE', updatedProduct);
-    };
-
+    // 5. BORRAR PRODUCTO (Solo envía a la nube)
     const deleteProduct = async (id: string) => {
-        const product = products.find(p => p.id === id);
-        if (!product) return;
-        const newProducts = products.filter(p => p.id !== id);
-        await saveProducts(newProducts, 'DELETE', product);
+        if (!supabase) return;
+        const { error } = await supabase.from('products').delete().eq('id', id);
+        if (error) throw error;
     };
 
-    const addTransaction = async (transaction: Omit<Transaction, 'id' | 'date'>) => {
-        const product = products.find(p => p.id === transaction.productId);
-        if (!product) throw new Error("Product not found");
+    // 6. REGISTRAR MOVIMIENTO (Solo envía a la nube)
+    const addTransaction = async (txData: Omit<Transaction, 'id' | 'date'>) => {
+        if (!supabase) return;
 
-        const newQuantity = transaction.type === 'IN'
-            ? product.quantity + transaction.quantity
-            : product.quantity - transaction.quantity;
+        const product = products.find(p => p.id === txData.productId);
+        if (!product) throw new Error("Producto no encontrado");
 
-        if (newQuantity < 0) throw new Error("Insufficient stock");
+        const newQuantity = Number(product.quantity) + (txData.type === 'IN' ? Number(txData.quantity) : -Number(txData.quantity));
+        if (newQuantity < 0) throw new Error("Stock insuficiente");
 
-        // Update product
-        const updatedProduct = { ...product, quantity: newQuantity, updatedAt: new Date().toISOString() };
-        const updatedProducts = products.map(p => p.id === transaction.productId ? updatedProduct : p);
-        await saveProducts(updatedProducts, 'UPDATE', updatedProduct);
+        // Actualizamos stock y registramos transacción
+        const { error: pError } = await supabase.from('products').update({ quantity: newQuantity, updatedAt: new Date().toISOString() }).eq('id', txData.productId);
+        if (pError) throw pError;
 
-        // Add transaction
-        const newTransaction: Transaction = {
-            ...transaction,
-            id: crypto.randomUUID(),
-            date: new Date().toISOString(),
-            user: user || 'Anónimo',
-        };
-
-        const newTransactions = [newTransaction, ...transactions];
-        await saveTransactions(newTransactions, newTransaction);
-
-        return newTransaction;
+        const newTx = { ...txData, date: new Date().toISOString(), user: user || 'Sistema' };
+        const { error: tError } = await supabase.from('transactions').insert([newTx]);
+        if (tError) throw tError;
     };
 
     const clearAllData = async () => {
-        if (supabase) {
-            await supabase.from(TABLE_TRANSACTIONS).delete().neq('id', '0');
-            await supabase.from(TABLE_PRODUCTS).delete().neq('id', '0');
-        } else {
-            localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
-            localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
-        }
-        setProducts([]);
-        setTransactions([]);
+        if (!supabase) return;
+        await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     };
 
     return (
@@ -210,8 +144,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
 export function useData() {
     const context = useContext(DataContext);
-    if (context === undefined) {
-        throw new Error('useData must be used within a DataProvider');
-    }
+    if (context === undefined) throw new Error('useData must be used within a DataProvider');
     return context;
 }
