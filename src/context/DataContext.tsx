@@ -94,19 +94,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (error) throw error;
     };
 
-    // 5. BORRAR PRODUCTO (Optimista e instantáneo)
+    // 5. BORRAR PRODUCTO (Infalible e instantáneo)
     const deleteProduct = async (id: string) => {
         if (!supabase) return;
 
-        // Lo quitamos de la pantalla inmediatamente
+        // 1. Lo quitamos de la pantalla al segundo (Optimista)
         setProducts(prev => prev.filter(p => p.id !== id));
 
-        const { error } = await supabase.from('products').delete().eq('id', id);
-        if (error) {
-            console.error("Error al eliminar de Supabase:", error);
-            // Si hubo error, podríamos recargar para asegurar consistencia
+        try {
+            // 2. Ejecutamos el borrado en Supabase
+            const { error } = await supabase.from('products').delete().eq('id', id);
+
+            if (error) {
+                throw error;
+            }
+            console.log("Producto eliminado de Supabase.");
+        } catch (err) {
+            console.error("Error crítico al borrar:", err);
+            // Si falla, recargamos para no mentir al usuario
             const { data } = await supabase.from('products').select('*').order('name');
             if (data) setProducts(data as Product[]);
+            alert("Vaya, hubo un problema al borrar en Supabase. Inténtalo de nuevo.");
         }
     };
 
