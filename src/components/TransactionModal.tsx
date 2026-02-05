@@ -22,12 +22,12 @@ export function TransactionModal({ type, onClose, onSuccess }: TransactionModalP
         notes: '',
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            addTransaction({
+            await addTransaction({
                 productId: formData.productId,
                 type: type,
                 quantity: Number(formData.quantity),
