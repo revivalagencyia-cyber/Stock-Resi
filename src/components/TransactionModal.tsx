@@ -43,8 +43,8 @@ export function TransactionModal({ type, onClose, onSuccess }: TransactionModalP
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+            <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 md:p-6 shadow-2xl animate-in zoom-in-95 duration-200 ring-1 ring-border/50">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                         <ArrowRightLeft className="h-5 w-5 text-primary" />

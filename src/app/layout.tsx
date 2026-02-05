@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/Sidebar";
+import { Navigation } from "@/components/Navigation";
 import { UserProvider } from "@/context/UserContext";
 import { DataProvider } from "@/context/DataContext";
 
@@ -32,9 +32,9 @@ export default function RootLayout({
       >
         <UserProvider>
           <DataProvider>
-            <Sidebar />
-            <main className="pl-64">
-              <div className="container mx-auto p-8 max-w-7xl animate-in fade-in duration-500">
+            <Navigation />
+            <main className="pt-20 pb-24 md:pb-12">
+              <div className="container mx-auto p-4 md:p-8 max-w-7xl animate-in fade-in duration-500">
                 {children}
               </div>
             </main>

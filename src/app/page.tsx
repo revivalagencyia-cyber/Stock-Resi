@@ -79,14 +79,14 @@ export default function Dashboard() {
       </div>
 
       {/* Grid de Estadísticas Rápidas */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <Card className="relative overflow-hidden border-none bg-gradient-to-br from-primary/10 to-transparent shadow-sm ring-1 ring-primary/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-semibold text-primary uppercase tracking-wider">Productos Totales</CardTitle>
             <Package className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-black">{totalProducts}</div>
+            <div className="text-3xl md:text-4xl font-black">{totalProducts}</div>
             <p className="text-xs text-muted-foreground mt-1 font-medium italic">En catálogo activo</p>
           </CardContent>
         </Card>
@@ -103,7 +103,7 @@ export default function Dashboard() {
             <AlertTriangle className={cn("h-5 w-5", lowStockProducts > 0 ? "text-amber-500" : "text-success")} />
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-black">{lowStockProducts}</div>
+            <div className="text-3xl md:text-4xl font-black">{lowStockProducts}</div>
             <p className="text-xs text-muted-foreground mt-1 font-medium">Requieren reposición</p>
           </CardContent>
         </Card>
@@ -120,7 +120,7 @@ export default function Dashboard() {
             <Clock className={cn("h-5 w-5", outOfStock > 0 ? "text-destructive" : "text-muted-foreground")} />
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-black">{outOfStock}</div>
+            <div className="text-3xl md:text-4xl font-black">{outOfStock}</div>
             <p className="text-xs text-muted-foreground mt-1 font-medium">Sin existencias</p>
           </CardContent>
         </Card>
@@ -131,15 +131,15 @@ export default function Dashboard() {
             <BarChart3 className="h-5 w-5 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-black">{last24hTransactions}</div>
+            <div className="text-3xl md:text-4xl font-black">{last24hTransactions}</div>
             <p className="text-xs text-muted-foreground mt-1 font-medium">Movimientos detectados</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-7">
+      <div className="grid gap-8 xl:grid-cols-7">
         {/* Tabla de Alerta de Stock Bajo */}
-        <Card className="lg:col-span-4 border-none shadow-xl bg-card">
+        <Card className="xl:col-span-4 border-none shadow-xl bg-card">
           <CardHeader>
             <div className="flex items-center gap-2 text-amber-500">
               <TrendingUp className="h-5 w-5" />
@@ -176,7 +176,7 @@ export default function Dashboard() {
                         </div>
                         <Button
                           size="sm"
-                          className="rounded-full w-8 h-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="rounded-full w-8 h-8 p-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                           onClick={() => setModalType('IN')}
                         >
                           <Plus className="h-4 w-4" />
@@ -190,7 +190,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Últimos Movimientos Rápido */}
-        <Card className="lg:col-span-3 border-none shadow-xl bg-card overflow-hidden">
+        <Card className="xl:col-span-3 border-none shadow-xl bg-card overflow-hidden">
           <CardHeader className="bg-primary/5 pb-6">
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" />

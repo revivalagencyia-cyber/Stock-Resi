@@ -15,7 +15,7 @@ const navItems = [
     { href: '/movimientos', label: 'Movimientos', icon: ArrowRightLeft },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const pathname = usePathname();
     const { clearAllData } = useData();
     const { user, logout } = useUser();
@@ -36,7 +36,7 @@ export function Sidebar() {
     };
 
     return (
-        <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border/50 bg-background/60 backdrop-blur-xl flex flex-col">
+        <aside className="h-full w-64 border-r border-border/50 bg-background xl:bg-background/60 xl:backdrop-blur-xl flex flex-col">
             <div className="flex h-16 items-center border-b border-border/50 px-6">
                 <div className="flex items-center gap-2 font-bold text-xl text-primary">
                     <Box className="h-6 w-6" />
@@ -51,6 +51,7 @@ export function Sidebar() {
                         <Link
                             key={item.href}
                             href={item.href}
+                            onClick={onNavigate}
                             className={cn(
                                 "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
                                 isActive
